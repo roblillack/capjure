@@ -1,0 +1,78 @@
+package com.burningsoda.capjure;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+public class EthernetFrame extends Packet {
+    public enum Protocol {
+        UNKNOWN(-1),
+        PUP(0x200),
+        IP(0x800),
+        ARP(0x806),
+        REVARP(0x8035),
+        VLAN(0x8100),
+        IPV6(0x86dd),
+        PAE(0x888e),
+        RSN_PREAUTH(0x88c7);
+
+        private int id;
+
+        Protocol(int t) {
+            id = t;
+        }
+
+        private static Map<Short, Protocol> map;
+        static {
+            map = new HashMap<Short, Protocol>();
+            for (Protocol p : Protocol.values()) {
+                map.put((short) p.id, p);
+            }
+        }
+
+        public static Protocol byValue(short val) {
+            Protocol proto = map.get(val);
+            return proto == null ? UNKNOWN : proto;
+        }
+
+        public static Protocol fromBytes(byte[] buf, int offset) {
+            return Protocol.byValue((short) (buf[offset] << 8 + buf[offset + 1]));
+        }
+    }
+
+    public static int HEADER_SIZE = 6 + 6 + 2;
+
+    public EthernetFrame(byte[] rawData) {
+        super(rawData);
+    }
+
+    public static EthernetFrame fromPacket(Packet p) {
+        if (p.getRawPacketSize() < HEADER_SIZE) {
+            return null;
+        }
+
+        return new EthernetFrame(p.getRawData());
+    }
+
+    public Protocol getProtocol() {
+        return Protocol.fromBytes(raw, 12);
+    }
+
+    public byte[] getSourceMacAddress() {
+        return Arrays.copyOfRange(raw, 0, 6);
+    }
+
+    public byte[] getDestinationMacAddress() {
+        return Arrays.copyOfRange(raw, 6, 12);
+    }
+
+    @Override
+    public byte[] getPayload() {
+        return Arrays.copyOfRange(raw, HEADER_SIZE, raw.length - HEADER_SIZE);
+    }
+
+    @Override
+    public int getPayloadSize() {
+        return getRawPacketSize() - HEADER_SIZE;
+    }
+}
