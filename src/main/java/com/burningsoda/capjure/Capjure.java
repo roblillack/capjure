@@ -1,8 +1,6 @@
 package com.burningsoda.capjure;
 
-import com.sun.jna.Pointer;
-import com.sun.jna.ptr.PointerByReference;
-
+import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Date;
 
@@ -13,33 +11,22 @@ public class Capjure {
 
         System.out.format("Device: %s\n", dev);
 
-        PointerByReference errbuf = new PointerByReference();
-        Pointer handle = PcapLibrary.pcap_open_live(dev, 2048, 1, 1000, errbuf);
-
-        if (handle == Pointer.NULL) {
-            System.err.format("Couldn't open device: %s\n", dev);
+        PacketReader reader = new PacketReader(dev);
+        try {
+            reader.open();
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
             System.exit(2);
         }
 
-        System.out.format("HANDLE: %s\n", handle);
-
-        PcapLibrary.pcap_pkthdr header = new PcapLibrary.pcap_pkthdr();
-
         for (;;) {
-            Pointer p = PcapLibrary.pcap_next(handle, header);
-            if (p == null) {
+            Packet packet;
+            try {
+                packet = reader.readPacket();
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
                 continue;
             }
-
-            if (header.len > 2000) {
-                continue;
-            }
-
-            if (header.caplen < header.len) {
-                continue;
-            }
-
-            Packet packet = new Packet(p.getByteArray(0, header.caplen));
 
             EthernetFrame frame = EthernetFrame.fromPacket(packet);
             if (frame == null) {
