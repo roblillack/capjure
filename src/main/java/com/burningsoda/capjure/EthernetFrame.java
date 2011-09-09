@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class EthernetFrame extends Packet {
+public class EthernetFrame extends PacketLayer {
     public enum Protocol {
         UNKNOWN(-1),
         PUP(0x200),
@@ -42,8 +42,35 @@ public class EthernetFrame extends Packet {
 
     public static int HEADER_SIZE = 6 + 6 + 2;
 
+    private byte[] raw;
+
+    @Override
+    public PacketLayer getParentLayer() {
+        return null;
+    }
+
+    @Override
+    public int getHeaderSize() {
+        return HEADER_SIZE;
+    }
+
+    @Override
+    public int getHeaderOffset() {
+        return 0;
+    }
+
+    @Override
+    public byte[] getRawData() {
+        return raw;
+    }
+
+    @Override
+    public int getSize() {
+        return raw.length;
+    }
+
     public EthernetFrame(byte[] rawData) {
-        super(rawData);
+        raw = rawData;
     }
 
     public static EthernetFrame fromPacket(Packet p) {
@@ -66,13 +93,12 @@ public class EthernetFrame extends Packet {
         return Arrays.copyOfRange(raw, 6, 12);
     }
 
-    @Override
-    public byte[] getPayload() {
-        return Arrays.copyOfRange(raw, HEADER_SIZE, raw.length - HEADER_SIZE);
+    public InternetLayer getInternetLayer() {
+        if (getProtocol() == Protocol.IP) {
+            return new IPv4Packet(this);
+        }
+
+        return new InternetLayer(this);
     }
 
-    @Override
-    public int getPayloadSize() {
-        return getRawPacketSize() - HEADER_SIZE;
-    }
 }

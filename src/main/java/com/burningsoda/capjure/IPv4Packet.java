@@ -1,14 +1,17 @@
 package com.burningsoda.capjure;
 
-import java.lang.reflect.Array;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class IPv4Packet extends Packet {
+public class IPv4Packet extends InternetLayer {
+
+    public IPv4Packet(EthernetFrame parent) {
+        super(parent);
+    }
+
     public enum Protocol {
         UNKNOWN(-1),
         ICMP(0x01),
@@ -38,23 +41,29 @@ public class IPv4Packet extends Packet {
         }
     }
 
-    public IPv4Packet(byte[] rawData) {
-        super(rawData);
-    }
-
     public byte getProtocolVersion() {
-        return (byte) (raw[0] >> 4);
+        return (byte) (readByte(0) >> 4);
     }
 
     public Protocol getProtocol() {
-        return Protocol.byValue(raw[9]);
+        return Protocol.byValue(readByte(9));
     }
 
     public Inet4Address getSourceAddress() throws UnknownHostException {
-        return (Inet4Address) InetAddress.getByAddress(Arrays.copyOfRange(raw, 12, 16));
+        return (Inet4Address) InetAddress.getByAddress(readBytes(12, 4));
     }
 
     public Inet4Address getDestinationAddress() throws UnknownHostException {
-        return (Inet4Address) InetAddress.getByAddress(Arrays.copyOfRange(raw, 16, 20));
+        return (Inet4Address) InetAddress.getByAddress(readBytes(16, 4));
+    }
+
+    public TransportLayer getTransportLayer() {
+        if (getProtocol() == Protocol.UDP) {
+            return new UdpPacket(this);
+        } else if (getProtocol() == Protocol.TCP) {
+            return new TcpPacket(this);
+        }
+
+        return new TransportLayer(this);
     }
 }
