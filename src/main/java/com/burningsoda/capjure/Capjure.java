@@ -12,7 +12,7 @@ public class Capjure {
 
         System.out.format("Device: %s\n", dev);
 
-        PacketReader reader = new PacketReader(dev);
+        PacketReader reader = new InterfacePacketReader(dev);
         try {
             reader.open();
         } catch (IOException ioe) {
