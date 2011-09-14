@@ -107,6 +107,14 @@ public class FlowPeers {
         return false;
     }
 
+    public boolean equalsIncludingDirection(FlowPeers p) {
+        return p != null &&
+                destinationPort == p.destinationPort &&
+                sourcePort == p.sourcePort &&
+                destination.equals(p.destination) &&
+                source.equals(p.source);
+    }
+
     @Override
     public int hashCode() {
         int result = source.hashCode() + destination.hashCode();
