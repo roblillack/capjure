@@ -1,5 +1,7 @@
 package com.burningsoda.capjure;
 
+import com.burningsoda.capjure.processor.PacketProcessor;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 

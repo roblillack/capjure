@@ -1,4 +1,6 @@
-package com.burningsoda.capjure;
+package com.burningsoda.capjure.processor;
+
+import com.burningsoda.capjure.*;
 
 import java.io.EOFException;
 import java.io.IOException;
