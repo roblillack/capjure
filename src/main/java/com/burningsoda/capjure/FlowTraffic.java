@@ -1,6 +1,9 @@
 package com.burningsoda.capjure;
 
 public class FlowTraffic {
+    FlowPeers peers;
+    // UP:    src --> dest
+    // DOWN: dest --> src
     long bytesUp;
     long bytesDown;
     long packetsUp;
@@ -9,7 +12,30 @@ public class FlowTraffic {
     long firstPacket;
     long lastPacket;
 
-    public FlowTraffic() {
+    public FlowTraffic(FlowPeers p) {
+        peers = p;
+    }
+
+    public FlowPeers getPeers() {
+        return peers;
+    }
+
+    public void addTraffic(FlowTraffic o) {
+        if (peers.equalsIncludingDirection(o.getPeers())) {
+            bytesUp += o.bytesUp;
+            bytesDown += o.bytesDown;
+            packetsUp += o.packetsUp;
+            packetsDown += o.packetsDown;
+        } else {
+            bytesUp += o.bytesDown;
+            bytesDown += o.bytesUp;
+            packetsUp += o.packetsDown;
+            packetsDown += o.packetsUp;
+        }
+        firstPacket = Math.min(firstPacket, o.firstPacket);
+        lastPacket = Math.max(lastPacket, o.lastPacket);
+
+        // TODO: What happenz to the protocol? Shouldn't we take this into the peers?
     }
 
     public long getBytesUp() {
@@ -18,6 +44,22 @@ public class FlowTraffic {
 
     public void setBytesUp(long bytesUp) {
         this.bytesUp = bytesUp;
+    }
+
+    public void addBytesUp(long count) {
+        bytesUp += count;
+    }
+
+    public void addBytesDown(long count) {
+        bytesDown += count;
+    }
+
+    public void addPacketsUp(long count) {
+        packetsUp += count;
+    }
+
+    public void addPacketsDown(long count) {
+        packetsDown += count;
     }
 
     public long getBytesDown() {
