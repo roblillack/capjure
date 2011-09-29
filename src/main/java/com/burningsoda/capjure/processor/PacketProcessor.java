@@ -10,6 +10,10 @@ import java.util.*;
 public class PacketProcessor {
     PacketReader reader;
     long flowTimeoutMillis = 60000L;
+    final Map<FlowPeers, FlowTraffic> flowTrafficMap = new HashMap<FlowPeers, FlowTraffic>();
+    long totalBytes = 0L;
+    long totalPackets = 0L;
+    long totalFlows = 0L;
 
     public PacketProcessor(PacketReader r) {
         reader = r;
@@ -23,13 +27,34 @@ public class PacketProcessor {
         this.flowTimeoutMillis = flowTimeoutMillis;
     }
 
-    public void run() {
-        final Map<FlowPeers, FlowTraffic> flowTrafficMap = new HashMap<FlowPeers, FlowTraffic>();
+    public Map<FlowPeers, FlowTraffic> getFlowTrafficMap() {
+        return flowTrafficMap;
+    }
 
-        long start = System.currentTimeMillis();
-        long totalBytes = 0L;
-        long totalPackets = 0L;
+    public void run() {
+        final long start = System.currentTimeMillis();
         long lastCleanup = start;
+
+        new Timer().scheduleAtFixedRate(
+                new TimerTask() {
+                    long lastBytes = 0L;
+                    long lastPackets = 0L;
+
+                    @Override
+                    public void run() {
+                        long end = System.currentTimeMillis();
+                        double secs = (end - start)/1000.0;
+                        System.out.format("%d Packets (%.4f MB) processed in %.2f seconds (~ %.4f mbit/s, %.4f pps)\n",
+                                totalPackets, totalBytes/1000000.0, (end-start)/1000.0,
+                                totalBytes*8/1000000.0/secs, totalPackets/secs);
+                        System.out.format("Total Flows: %d (~ %.4f new flows/sec)\n", totalFlows, totalFlows/secs);
+                        System.out.format("CURRENT: %.4f mbit/s, %d pps\n",
+                                (totalBytes - lastBytes) * 8 / 1000000.0, totalPackets - lastPackets);
+                        lastBytes = totalBytes;
+                        lastPackets = totalPackets;
+                        System.out.format("%d active flows.\n", flowTrafficMap.size());
+                    }
+                }, 1000L, 1000L);
 
         for (;;) {
             Packet packet;
@@ -62,17 +87,20 @@ public class PacketProcessor {
                 continue;
             }
 
-            //System.out.format("%s: Jacked a packet with length of [%d], IP proto: %s\n", new Date(), frame.getSize(), transport.getClass().getSimpleName());
-            //System.out.println(peers);
-
             FlowTraffic traffic = flowTrafficMap.get(peers);
             if (traffic == null) {
-                traffic = new FlowTraffic();
+                traffic = new FlowTraffic(peers);
                 traffic.setFirstPacket(frame.getReadTimestamp());
                 flowTrafficMap.put(peers, traffic);
+                totalFlows++;
             }
-            traffic.setBytesDown(traffic.getBytesDown() + frame.getSize());
-            traffic.setPacketsDown(traffic.getPacketsDown() + 1);
+            if (traffic.getPeers().equalsIncludingDirection(peers)) {
+                traffic.addBytesUp(frame.getSize());
+                traffic.addPacketsUp(1);
+            } else {
+                traffic.addBytesDown(frame.getSize());
+                traffic.addPacketsDown(1);
+            }
             traffic.setLastPacket(frame.getReadTimestamp());
 
             totalBytes += frame.getSize();
@@ -92,18 +120,13 @@ public class PacketProcessor {
                 }
                 lastCleanup = now;
             }
-            /*new Timer().scheduleAtFixedRate(
-                    new TimerTask() {
-                        @Override
-                        public void run() {
-                            System.out.format("%d flows.\n", flowTrafficMap.size());
-                        }
-                    }, 0L, 1000L);*/
         }
 
         long end = System.currentTimeMillis();
+        double secs = (end - start)/1000.0;
         System.out.format("%d Packets (%.4f MB) processed in %.2f seconds (~ %.4f mbit/s, %.4f pps)\n",
                 totalPackets, totalBytes/1000000.0, (end-start)/1000.0,
-                totalBytes*8/1000000.0/((end-start)/1000.0), totalPackets/((end-start)/1000.0));
+                totalBytes*8/1000000.0/secs, totalPackets/secs);
+        System.out.format("Total Flows: %d (~ %.4f new flows/sec)\n", totalFlows, totalFlows/secs);
     }
 }
