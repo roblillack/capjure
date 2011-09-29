@@ -19,7 +19,7 @@ public class InterfacePacketReader implements PacketReader {
     @Override
     public void open() throws IOException {
         PointerByReference errbuf = new PointerByReference();
-        handle = PcapLibrary.pcap_open_live(device, 2048, 1, 1000, errbuf);
+        handle = PcapLibrary.pcap_open_live(device, 2048000, 1, 30000, errbuf);
 
         if (handle == Pointer.NULL) {
             throw new IOException(String.format("Couldn't open device: %s\n", device));
@@ -38,9 +38,9 @@ public class InterfacePacketReader implements PacketReader {
             return readPacket();
         }
 
-        if (header.len > 2000) {
+        /*if (header.len > 2000) {
             return readPacket();
-        }
+        }*/
 
         if (header.caplen < header.len) {
             return readPacket();
